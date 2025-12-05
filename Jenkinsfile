@@ -2,15 +2,20 @@ pipeline {
     agent any
 
     parameters {
-https://github.com/rashmigmr13-eng/terra.git        choice(name: 'terraformAction', choices: ['apply', 'destroy'], description: 'Choose your Terraform action to perform')
+        choice(
+            name: 'terraformAction',
+            choices: ['apply', 'destroy'],
+            description: 'Choose your Terraform action (apply or destroy)'
+        )
     }
 
     environment {
-        AWS_ACCESS_KEY_ID = credentials('AWS_ACCESS_KEY_ID')
+        AWS_ACCESS_KEY_ID      = credentials('AWS_ACCESS_KEY_ID')
         AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
     }
 
     stages {
+
         stage('Git Checkout') {
             steps {
                 dir('terraform') {
@@ -26,10 +31,10 @@ https://github.com/rashmigmr13-eng/terra.git        choice(name: 'terraformActio
                         echo "Initializing Terraform..."
                         terraform init
 
-                        echo "Running Terraform plan..."
+                        echo "Running Terraform Plan..."
                         terraform plan -out=tfplan
 
-                        echo "Generating human-readable plan output..."
+                        echo "Saving plan output..."
                         terraform show -no-color tfplan > tfplan.txt
                     '''
                 }
@@ -40,25 +45,32 @@ https://github.com/rashmigmr13-eng/terra.git        choice(name: 'terraformActio
             steps {
                 script {
                     def planOutput = readFile('terraform/project-1/tfplan.txt')
+
                     input(
-                        message: "Do you want to proceed with the Terraform action?",
+                        message: "Do you approve this Terraform run?",
                         parameters: [
-                            text(name: 'Terraform Plan Output', defaultValue: planOutput, description: 'Review the plan before continuing.')
+                            text(
+                                name: 'Terraform Plan Output',
+                                defaultValue: planOutput,
+                                description: 'Review this plan before approving'
+                            )
                         ]
                     )
                 }
             }
         }
 
-        stage('Terraform Apply or Destroy') {
+        stage('Terraform Apply / Destroy') {
             when {
                 expression {
-                    return params.terraformAction == 'apply' || params.terraformAction == 'destroy'
+                    params.terraformAction == 'apply' || params.terraformAction == 'destroy'
                 }
             }
+
             steps {
                 dir('terraform/project-1') {
                     script {
+
                         if (params.terraformAction == 'apply') {
                             echo "Applying Terraform changes..."
                             sh 'terraform apply -input=false tfplan'
@@ -66,6 +78,7 @@ https://github.com/rashmigmr13-eng/terra.git        choice(name: 'terraformActio
                             echo "Destroying Terraform infrastructure..."
                             sh 'terraform destroy -auto-approve'
                         }
+
                     }
                 }
             }
@@ -74,13 +87,13 @@ https://github.com/rashmigmr13-eng/terra.git        choice(name: 'terraformActio
 
     post {
         success {
-            echo '✅ Terraform action completed successfully!'
+            echo '✅ Terraform pipeline completed successfully!'
         }
         failure {
-            echo '❌ Terraform action failed. Please check the logs.'
+            echo '❌ Terraform pipeline failed — check logs!'
         }
         always {
-            echo '📦 Pipeline execution completed.'
+            echo '📦 Pipeline execution finished.'
         }
     }
 }
