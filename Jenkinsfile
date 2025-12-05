@@ -14,7 +14,7 @@ https://github.com/rashmigmr13-eng/terra.git        choice(name: 'terraformActio
         stage('Git Checkout') {
             steps {
                 dir('terraform') {
-                    git branch: 'terraform', url: 'https://github.com/rashmigmr13-eng/terra.git'
+                    git branch: 'main', url: 'https://github.com/rashmigmr13-eng/terra.git'
                 }
             }
         }
